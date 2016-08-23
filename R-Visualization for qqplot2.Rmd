@@ -1,0 +1,244 @@
+---
+title: "R-Visualization for qqplot2"
+author: "許sir"
+
+---
+
+
+### Data Description
+#### [第一組範例]是內建資料集 Diamonds。~54,000 round diamonds from http://www.diamondse.info/
+#### [第二組範例]是內建資料集 WorldPhones。
+
+### [設定所需的函式庫(libraries)以及載入資料]
+```{}
+install.packages("ggplot2")
+install.packages("ggplot2movies")
+```
+
+```{r message=FALSE, warning=FALSE, results='hide'}
+library(ggplot2)
+library(reshape2)
+library(ggplot2movies)
+
+data(diamonds) #第一組data
+data(WorldPhones) #第二組data
+data(movies)  #第三組data
+
+ggplot(data=diamonds, aes(x=cut)) + geom_bar() #a quick example 
+```
+
+## PART 1.三大圖型概述
+
+#### [畫圖基本概念]你要決定到底是要Factor or Numeric?
+
+### [第一大類] bar plot
+```{r message=FALSE, warning=FALSE}
+str(diamonds)
+head(diamonds)
+summary(diamonds)
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(data=diamonds, aes(x=cut)) + geom_bar() #x must be of type factor
+
+ggp <- ggplot(data=diamonds[1:5,], aes(x=cut)) + geom_bar() #geom_bar drops category with no occurrence
+ggp
+
+ggplot(data=diamonds, aes(x=cut)) + geom_bar() + coord_flip() #horizontal bar
+
+
+ggp <- ggp + xlab("Cut") + ylab("Count") + ggtitle("Hello ggplot!") #change label naming
+ggp
+
+ggp + geom_bar(fill="snow", color="black") # change color and see colors() if you're picky
+
+```
+
+### 1-1.我們可以事先做一點點計算(plot counts as is )
+```{r message=FALSE, warning=FALSE}
+diamonds_precounted <- as.data.frame(table(diamonds$cut, dnn=c("Cut")))
+diamonds_precounted
+
+ggplot(diamonds_precounted, aes(x=Cut, y=Freq)) + geom_bar(stat="identity") # default is "bin"
+```
+
+
+### 1-2.有關於stat=“identity”
+#### A.row should be unique: otherwise counts will be summed up
+#### B.missing label will be present at default: differ from stat="bin"
+#### C.negative bar is allowed
+
+```{r message=FALSE, warning=FALSE}
+diamonds[1:5,]
+ggplot(diamonds[1:5,], aes(x=cut, y=depth)) + geom_bar(stat="identity")
+
+ggplot(diamonds_precounted, aes(x=reorder(Cut, -Freq), y=Freq)) + 
+  geom_bar(stat='identity') # The order is determined by factor levels
+```
+
+### 1-3.stack grouping 
+```{r message=FALSE, warning=FALSE}
+ggplot(data=diamonds, aes(x=color, fill=cut)) + geom_bar() #by fill
+ggplot(data=diamonds, aes(x=color, color=cut)) + geom_bar() #by color
+ggplot(data=diamonds, aes(x=color, fill=cut)) + geom_bar(position="dodge") #dodge grouping
+
+```
+
+### 1-4.From bar to histogram 
+#### when x is numeric
+```{r message=FALSE, warning=FALSE}
+ggplot(data=diamonds, aes(x=price)) + geom_bar()
+ggplot(data=diamonds, aes(x=price, fill=cut)) + geom_bar(position="stack") #by stack
+ggplot(data=diamonds, aes(x=price, fill=cut)) + geom_bar(position="identity", alpha=.5) #by identity (overlapping)
+
+ggplot(data=diamonds, aes(x=price, fill=cut)) + geom_density(position="identity", alpha=.5) #from histogram to density plot
+
+ggplot(data=diamonds[diamonds$cut %in% c("Fair", "Ideal"),], aes(x=price, fill=cut)) + 
+    geom_density(position="identity", alpha=.5) + 
+    geom_bar(position="identity", alpha=.5) #both histogram and density (scale wrong?K)
+
+
+```
+
+### [第二大類] Line Graph
+
+```{r message=FALSE, warning=FALSE}
+head(WorldPhones) #第二組data基本概述
+str(WorldPhones)
+
+#Remember: ggplot eat only data.frames
+WorldPhones.DF <- as.data.frame(WorldPhones)
+WorldPhones.DF$year <- rownames(WorldPhones.DF)
+class(WorldPhones.DF) # this time we should be fine!
+
+```
+
+### 2-1.比較一下這兩種方法有什麼不同
+```{r message=FALSE, warning=FALSE}
+ggplot(WorldPhones.DF, aes(x=year, y=Asia)) + geom_line(size=1.5)
+ggplot(WorldPhones.DF, aes(x=as.numeric(year), y=Asia)) + geom_line(size=1.5)
+```
+
+### 2-2.長表與寬表之轉換
+```{r message=FALSE, warning=FALSE}
+WP=WorldPhones.DF[,c(1:3,8)]
+head(WP,8) #Wide format
+
+
+WP.long=melt(WP,id.vars='year') # ?Hmelt?N?????ഫ??Long Format?A?Hid.vars?O?d????
+colnames(WP.long)= c('Year','Region','Value')
+head(WP.long) #Long format with melt
+
+
+```
+
+### 2-3.各種Line的不同
+```{r message=FALSE, warning=FALSE}
+WP.long$Year <- as.integer(as.character(WP.long$Year))
+ggplot(WP.long, aes(x=Year, y=Value, color=Region)) + geom_line(size=1.5)
+
+ggplot(WP.long, aes(x=Year, y=Value, linetype=Region))+
+  geom_line(size=1.5)
+
+ggplot(WP.long,aes(x=factor(Year), y=Value))+
+  geom_line(aes(linetype=Region,group=Region),size=1.5)
+
+ggplot(WP.long, aes(x=Year, y=Value, linetype=Region)) + geom_line(size=1.5) +
+  guides(linetype=guide_legend(reverse=TRUE))
+
+
+```
+
+### [第三大類] Scatter Plot
+```{r message=FALSE, warning=FALSE}
+head(movies) #第三組data基本概述
+str(movies)
+
+movies1 <- movies[!is.na(movies$budget),]
+ggplot(movies1, aes(x=budget, y=rating)) + geom_point()
+```
+
+### 3-1.控制point的各種型態
+```{r message=FALSE, warning=FALSE}
+ggplot(movies1, aes(x=budget, y=rating)) + geom_point(shape=5, size=3)
+
+```
+
+### 3-2.Grouping
+```{r message=FALSE, warning=FALSE}
+ggplot(movies1, aes(x=budget, y=rating, color=Action)) + geom_point() #Grouping: by binary variable
+
+ggplot(movies1, aes(x=budget, y=rating, color=factor(Action))) + 
+    geom_point() + labs(color='Action Movie?') #Grouping: by categarical variable
+
+ggplot(movies1, aes(x=budget, y=rating, color=factor(Action), shape=(length > 120))) + 
+    geom_point(size=3) + labs(color='Action Movie?') #Multi-grouping
+```
+
+### 3-3.regression line
+```{r message=FALSE, warning=FALSE}
+ggplot(movies, aes(x=votes, y=rating)) + geom_point() +
+    stat_smooth(method=lm, level=.95) # add se=FALSE to disable CI
+
+ggplot(movies, aes(x=votes, y=rating)) + geom_point() + stat_smooth() #The default is a polynomial fit
+
+ggplot(movies1, aes(x=budget, y=rating, color=factor(Action))) + 
+    geom_point() + labs(color='Action Movie?') + stat_smooth(method=lm, se=FALSE) #Fitting is smart to align with grouping
+
+
+```
+
+## PART 2.基本統計運算
+
+### 2-1-1. Which Type of Film Cost the Most in Average?
+```{r message=FALSE, warning=FALSE}
+movietype <- colnames(movies)[18:24]
+movies1_singletype <- movies1[rowSums(movies1[, movietype]) == 1,] # remove multi-typed
+movietype_alt <- c(movietype[length(movietype)], movietype[-length(movietype)]) 
+# convert multiple dummies into one factor as grouping var
+# a little matrix operation will do the trick
+dummies <- as.matrix(movies1_singletype[, movietype_alt])
+movies1_singletype$Type <- factor(dummies %*% (1:length(movietype_alt)), labels=movietype_alt)
+
+# Compute the Average Budget of Each Type
+tapply(movies1_singletype$budget, movies1_singletype$Type, mean)
+```
+
+### 2-1-2. Determine the variation
+```{r message=FALSE, warning=FALSE}
+#The first factor level of movietype, Short, is represented as the intercept term.
+lmfit <- lm(as.formula("budget ~ Type"), movies1_singletype)
+summary(lmfit)$coef 
+
+```
+
+### 2-1-3. Another way to estimate the coefficients
+```{r message=FALSE, warning=FALSE}
+#The last predictor, Short is combined into the intercept term.
+# mean(movies1_singletype[movies1_singletype$Animation == 1, 'budget'])
+lmfit <- lm(as.formula(paste('budget ~', paste(movietype, collapse=' + '))), 
+            movies1_singletype)
+summary(lmfit)$coef
+```
+
+### 2-1-4. Draw the regression lines of each type
+```{r message=FALSE, warning=FALSE}
+#What is the association between cost and rating, conditional on type?
+
+movies1_reg_plot <- ggplot(movies1_singletype, aes(x=budget, y=rating, color=Type)) + 
+  geom_point(shape=1) +
+  
+  # set fullrange=T will extend the fitted line outside the sample range
+  stat_smooth(method=lm, se=FALSE, fullrange=FALSE, size=1.5) +
+  
+  # color is the grouping interface, hence scale_color_*
+  scale_color_discrete(name='Movie Type: # of samples', 
+                       labels=paste(levels(movies1_singletype$Type), ': ', 
+                                    table(movies1_singletype$Type)))
+```
+
+### 2-1-5.Output
+```{r message=FALSE, warning=FALSE}
+movies1_reg_plot
+```
+
